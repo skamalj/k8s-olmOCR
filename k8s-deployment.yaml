@@ -35,6 +35,8 @@ spec:
               value: "olmOCR-7B-0225-preview"
             - name: OPENAI_API_KEY
               value: "dummy"
+            - name: MAX_TOKENS
+              value: "10000"  # Adjust as needed
 
           ports:
             - containerPort: 8000
