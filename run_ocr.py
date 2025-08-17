@@ -18,6 +18,7 @@ app = FastAPI(title="OLM-OCR API")
 VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://vllm-api:8000/v1")
 VLLM_API_KEY = os.getenv("VLLM_API_KEY", None)  # can be None
 VLLM_MODEL = os.getenv("VLLM_MODEL", "allenai/olmOCR-7B-0225-preview")
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", "10000"))  # default 512
 
 
 # Input schema
@@ -40,8 +41,8 @@ async def run_ocr(req: OCRRequest):
         llm = ChatOpenAI(
             model=VLLM_MODEL,
             openai_api_base=VLLM_BASE_URL,
-            max_tokens=1024,
-            temperature=0.8,
+            max_tokens=MAX_TOKENS,
+            temperature=0.1,
         )
 
         async def process_page(page_number: int):
