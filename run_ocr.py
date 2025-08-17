@@ -1,81 +1,50 @@
-# app/main.py
+from fastapi import FastAPI, UploadFile, File, Form
+from typing import Optional
 import base64
+import fitz  # PyMuPDF
 import tempfile
-from fastapi import FastAPI
-from pydantic import BaseModel
-from fastapi.responses import JSONResponse
-from olmocr.data.renderpdf import render_pdf_to_base64png
-from olmocr.prompts import build_finetuning_prompt
-from olmocr.prompts.anchor import get_anchor_text
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage
+import os
+import ocrmypdf
 
-app = FastAPI(title="OLM-OCR API")
+app = FastAPI()
 
-# --- vLLM Server Configuration ---
-VLLM_BASE_URL = "http://vllm-api:8000/v1"   # service DNS in k8s
-VLLM_API_KEY = "vllm"
-VLLM_MODEL = "allenai/olmOCR-7B-0225-preview"
-
-# Input schema
-class OCRRequest(BaseModel):
-    file_base64: str
-    start_page: int = 1
-    end_page: int = 1
-
-
-@app.post("/ocr")
-async def run_ocr(req: OCRRequest):
+@app.post("/process-pdf/")
+async def process_pdf(
+    file_base64: str = Form(...),
+    start_page: Optional[int] = Form(None),
+    end_page: Optional[int] = Form(None)
+):
     try:
-        # Decode base64 -> temp PDF
-        pdf_bytes = base64.b64decode(req.file_base64)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(pdf_bytes)
-            pdf_path = tmp.name
+        # Decode base64
+        pdf_bytes = base64.b64decode(file_base64)
+        temp_input = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        temp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        temp_input.write(pdf_bytes)
+        temp_input.close()
+        temp_output.close()
 
-        # Initialize vLLM client
-        llm = ChatOpenAI(
-            model=VLLM_MODEL,
-            openai_api_key=VLLM_API_KEY,
-            openai_api_base=VLLM_BASE_URL,
-            max_tokens=1024,
-            temperature=0.8,
-        )
+        # Apply page range if provided
+        if start_page is not None or end_page is not None:
+            doc = fitz.open(temp_input.name)
+            start = start_page - 1 if start_page else 0
+            end = end_page if end_page else doc.page_count
+            subset = fitz.open()
+            for i in range(start, end):
+                subset.insert_pdf(doc, from_page=i, to_page=i)
+            subset.save(temp_input.name)
+            subset.close()
 
-        results = {}
+        # Run OCR (using GPU if ocrmypdf[ocrmypdf-gpu] installed)
+        ocrmypdf.ocr(temp_input.name, temp_output.name, use_threads=True)
 
-        # Iterate over page range
-        for page_number in range(req.start_page, req.end_page + 1):
-            try:
-                # Render PDF page to base64 PNG
-                image_base64 = render_pdf_to_base64png(
-                    pdf_path, page_number, target_longest_image_dim=1024
-                )
+        # Return OCR-ed file as base64
+        with open(temp_output.name, "rb") as f:
+            result_base64 = base64.b64encode(f.read()).decode("utf-8")
 
-                # Build OCR prompt
-                anchor_text = get_anchor_text(
-                    pdf_path, page_number, pdf_engine="pdfreport", target_length=4000
-                )
-                prompt_text = build_finetuning_prompt(anchor_text)
+        os.unlink(temp_input.name)
+        os.unlink(temp_output.name)
 
-                # Construct multimodal message
-                message = HumanMessage(
-                    content=[
-                        {"type": "text", "text": prompt_text},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/png;base64,{image_base64}"},
-                        },
-                    ]
-                )
-
-                # Call vLLM server
-                response = llm.invoke([message])
-                results[page_number] = response.content
-            except Exception as inner_e:
-                results[page_number] = f"Error processing page {page_number}: {inner_e}"
-
-        return {"ocr_results": results}
+        return {"status": "success", "ocr_pdf_base64": result_base64}
 
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        return {"status": "error", "message": str(e)}
