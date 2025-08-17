@@ -9,6 +9,7 @@ on:
       - "k8s-deployment.yaml" 
       - ".gitignore"
       - "Readme.md"
+      - ".github/**"
 
 jobs:
   build:
