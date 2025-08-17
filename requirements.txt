@@ -1,9 +1,5 @@
 fastapi
 uvicorn
-olmocr[gpu]
-"PyMuPDF<1.24.0"
 pillow
 langchain
 langchain-openai
-torch==2.3.0+cu118     # or the CUDA version matching your T4 driver
---extra-index-url https://download.pytorch.org/whl/cu118

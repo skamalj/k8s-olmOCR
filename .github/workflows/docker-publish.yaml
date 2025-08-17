@@ -14,6 +14,11 @@ jobs:
       packages: write
 
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -24,13 +29,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set image name (force lowercase)
+      - name: Set image name and tags
         run: |
-          IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY,,}/ocr-service:latest"
-          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+          IMAGE_BASE="ghcr.io/${GITHUB_REPOSITORY,,}/ocr-service"
+          DATE_TAG=$(date +'%Y%m%d%H%M%S')
 
-      - name: Build Docker image
-        run: docker build -t ${{ env.IMAGE_NAME }} .
+          echo "IMAGE_BASE=$IMAGE_BASE" >> $GITHUB_ENV
+          echo "DATE_TAG=$DATE_TAG" >> $GITHUB_ENV
 
-      - name: Push Docker image
-        run: docker push ${{ env.IMAGE_NAME }}
+      - name: Build Docker image with two tags
+        run: |
+          docker build -t ${{ env.IMAGE_BASE }}:latest -t ${{ env.IMAGE_BASE }}:${{ env.DATE_TAG }} .
+
+      - name: Push Docker images
+        run: |
+          docker push ${{ env.IMAGE_BASE }}:latest
+          docker push ${{ env.IMAGE_BASE }}:${{ env.DATE_TAG }}

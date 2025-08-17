@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ocr-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ocr-service
+  template:
+    metadata:
+      labels:
+        app: ocr-service
+    spec:
+      nodeSelector:
+            workload: olmOCRApi
+            kubernetes.azure.com/scalesetpriority: spot
+      tolerations:
+        - key: "kubernetes.azure.com/scalesetpriority"
+          operator: "Equal"
+          value: "spot"
+          effect: "NoSchedule"
+      containers:
+        - name: ocr-service
+          image: ghcr.io/skamalj/k8s-olmocr/ocr-service:20250817103015
+          resources:
+            requests:
+              nvidia.com/gpu: 1
+            limits:
+              nvidia.com/gpu: 1
+          env:
+            - name: VLLM_BASE_URL
+              value: "http://vllm-api:8000/v1"
+            - name: VLLM_MODEL
+              value: "olmOCR-7B-0225-preview"
+          ports:
+            - containerPort: 8000
