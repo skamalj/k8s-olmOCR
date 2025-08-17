@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "test/**"
+      - "k8s-deployment.yaml" 
+      - ".gitignore"
+      - "Readme.md"
 
 jobs:
   build:
