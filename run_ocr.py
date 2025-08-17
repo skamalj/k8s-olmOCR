@@ -2,6 +2,7 @@
 import base64
 import tempfile
 import os
+import asyncio
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
@@ -43,10 +44,7 @@ async def run_ocr(req: OCRRequest):
             temperature=0.8,
         )
 
-        results = {}
-
-        # Iterate over page range
-        for page_number in range(req.start_page, req.end_page + 1):
+        async def process_page(page_number: int):
             try:
                 # Render PDF page to base64 PNG
                 image_base64 = render_pdf_to_base64png(
@@ -70,11 +68,18 @@ async def run_ocr(req: OCRRequest):
                     ]
                 )
 
-                # Call vLLM server
-                response = llm.invoke([message])
-                results[page_number] = response.content
+                # Async call to vLLM server
+                response = await llm.ainvoke([message])
+                return page_number, response.content
             except Exception as inner_e:
-                results[page_number] = f"Error processing page {page_number}: {inner_e}"
+                return page_number, f"Error processing page {page_number}: {inner_e}"
+
+        # Run all pages concurrently
+        tasks = [process_page(page) for page in range(req.start_page, req.end_page + 1)]
+        results_list = await asyncio.gather(*tasks)
+
+        # Convert to dict
+        results = {page: content for page, content in results_list}
 
         return {"ocr_results": results}
 
