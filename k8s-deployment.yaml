@@ -22,7 +22,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: ocr-service
-          image: ghcr.io/skamalj/k8s-olmocr/ocr-service:20250817103015
+          image: ghcr.io/skamalj/k8s-olmocr/ocr-service:20250817170732
           resources:
             requests:
               nvidia.com/gpu: 1
@@ -32,6 +32,19 @@ spec:
             - name: VLLM_BASE_URL
               value: "http://vllm-api:8000/v1"
             - name: VLLM_MODEL
-              value: "olmOCR-7B-0225-preview"
+              value: "olmOCR-7B-0725"
           ports:
             - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ocr-service
+spec:
+  selector:
+    app: ocr-service
+  ports:
+    - port: 8000
+      targetPort: 8080
+      name: ocr-service
+  type: ClusterIP

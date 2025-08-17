@@ -38,7 +38,6 @@ async def run_ocr(req: OCRRequest):
         # Initialize vLLM client
         llm = ChatOpenAI(
             model=VLLM_MODEL,
-            openai_api_key=VLLM_API_KEY,
             openai_api_base=VLLM_BASE_URL,
             max_tokens=1024,
             temperature=0.8,
