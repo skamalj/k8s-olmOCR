@@ -3,3 +3,4 @@ uvicorn
 pillow
 langchain
 langchain-openai
+PyPDF2
