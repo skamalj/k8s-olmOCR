@@ -11,6 +11,7 @@ from olmocr.prompts import build_finetuning_prompt
 from olmocr.prompts.anchor import get_anchor_text
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
+from PyPDF2 import PdfReader  # Add this import to read PDF page count
 
 app = FastAPI(title="OLM-OCR API")
 
@@ -36,6 +37,23 @@ async def run_ocr(req: OCRRequest):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(pdf_bytes)
             pdf_path = tmp.name
+        
+        # Read PDF to get total pages
+        reader = PdfReader(pdf_path)
+        total_pages = len(reader.pages)
+
+        # Calculate end_page if not provided or greater than total pages
+        start_page = max(1, req.start_page)  # ensure start_page >= 1
+        if req.end_page is None or req.end_page > total_pages:
+            end_page = total_pages
+        else:
+            end_page = req.end_page
+
+        if start_page > end_page:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "start_page cannot be greater than end_page"}
+            )
 
         # Initialize vLLM client
         llm = ChatOpenAI(
@@ -76,13 +94,14 @@ async def run_ocr(req: OCRRequest):
                 return page_number, f"Error processing page {page_number}: {inner_e}"
 
         # Run all pages concurrently
-        tasks = [process_page(page) for page in range(req.start_page, req.end_page + 1)]
+        tasks = [process_page(page) for page in range(start_page, end_page + 1)]
         results_list = await asyncio.gather(*tasks)
 
-        # Convert to dict
-        results = {page: content for page, content in results_list}
+        # Sort results by page number and concat into single text
+        results_list.sort(key=lambda x: x[0])  # ensure page order
+        combined_text = "\n".join(content for _, content in results_list)
 
-        return {"ocr_results": results}
+        return {"ocr_results": combined_text}
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
