@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 from olmocr.data.renderpdf import render_pdf_to_base64png
-from olmocr.prompts import build_finetuning_prompt
+from olmocr.prompts import build_finetuning_prompt, build_no_anchoring_yaml_prompt
 from olmocr.prompts.anchor import get_anchor_text
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
@@ -74,8 +74,9 @@ async def run_ocr(req: OCRRequest):
                 anchor_text = get_anchor_text(
                     pdf_path, page_number, pdf_engine="pdfreport", target_length=4000
                 )
-                prompt_text = build_finetuning_prompt(anchor_text)
-                print(prompt_text)
+                #prompt_text = build_finetuning_prompt(anchor_text)
+                #print(prompt_text)
+                prompt_text = build_no_anchoring_yaml_prompt()
 
                 # Construct multimodal message
                 message = HumanMessage(
