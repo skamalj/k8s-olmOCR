@@ -101,7 +101,7 @@ async def run_ocr(req: OCRRequest):
 
         # Sort results by page number and concat into single text
         results_list.sort(key=lambda x: x[0])  # ensure page order
-        combined_text = "\n".join(content.natural_text for _, content in results_list)
+        combined_text = "\n".join(content for _, content in results_list)
 
         return {"ocr_results": combined_text}
 
