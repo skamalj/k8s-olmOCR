@@ -76,7 +76,16 @@ async def run_ocr(req: OCRRequest):
                 )
                 #prompt_text = build_finetuning_prompt(anchor_text)
                 #print(prompt_text)
-                prompt_text = build_no_anchoring_yaml_prompt()
+                #prompt_text = build_no_anchoring_yaml_prompt()
+                prompt_text = """
+You are an OCR-to-Markdown converter.  
+Extract all readable text from the following PDF page (or image) and output it as **well-structured Markdown**.  
+
+Requirements:  
+- Preserve headings, bullet points, numbered lists, tables, and emphasis.  
+- Do not add explanations, commentary, or extra content.  
+- Output only valid Markdown.
+"""
 
                 # Construct multimodal message
                 message = HumanMessage(

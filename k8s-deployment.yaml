@@ -22,7 +22,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: ocr-service
-          image: ghcr.io/skamalj/k8s-olmocr/ocr-service:20250824045949
+          image: ghcr.io/skamalj/k8s-olmocr/ocr-service:20250824051816
           resources:
             requests:
               nvidia.com/gpu: 1
