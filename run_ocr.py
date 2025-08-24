@@ -26,7 +26,7 @@ MAX_TOKENS = int(os.getenv("MAX_TOKENS", "10000"))  # default 512
 class OCRRequest(BaseModel):
     file_base64: str
     start_page: int = 1
-    end_page: int = 1
+    end_page: int = None  # if None, process to last page
 
 
 @app.post("/ocr")
@@ -75,6 +75,7 @@ async def run_ocr(req: OCRRequest):
                     pdf_path, page_number, pdf_engine="pdfreport", target_length=4000
                 )
                 prompt_text = build_finetuning_prompt(anchor_text)
+                print(prompt_text)
 
                 # Construct multimodal message
                 message = HumanMessage(
@@ -99,7 +100,7 @@ async def run_ocr(req: OCRRequest):
 
         # Sort results by page number and concat into single text
         results_list.sort(key=lambda x: x[0])  # ensure page order
-        combined_text = "\n".join(content for _, content in results_list)
+        combined_text = "\n".join(content.natural_text for _, content in results_list)
 
         return {"ocr_results": combined_text}
 
